@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Modèles</h1>
+    <button class="btn-primary" onclick="openForm()">+ Ajouter</button>
+</div>
+<table class="table">
+    <thead><tr><th>ID</th><th>Nom</th><th>Marque</th><th>Actions</th></tr></thead>
+    <tbody id="table-body"></tbody>
+</table>
+<script>
+async function loadData() {
+    const data = await api.get("/api/modeles");
+    document.getElementById("table-body").innerHTML = data.map(m => `<tr>
+        <td>${m.id}</td><td>${m.nom}</td><td>${m.marque_nom}</td>
+        <td><button class="btn-sm" onclick="openForm(${m.id})">✏️</button> <button class="btn-sm btn-danger" onclick="del(${m.id})">🗑️</button></td>
+    </tr>`).join("");
+}
+async function openForm(id) {
+    const marques = await api.get("/api/marques");
+    let m = {nom: "", marque_id: ""};
+    if (id) {
+        const all = await api.get("/api/modeles");
+        const found = all.find(x => x.id === id);
+        if (found) m = {nom: found.nom, marque_id: found.marque_id};
+    }
+    showModal(id ? "Modifier Modèle" : "Ajouter un Modèle", `
+        <div class="form-group"><label>Nom</label><input type="text" id="f-nom" value="${m.nom}"></div>
+        <div class="form-group"><label>Marque</label><select id="f-marque_id">${marques.map(mq => `<option value="${mq.id}" ${mq.id==m.marque_id?"selected":""}>${mq.nom}</option>`).join("")}</select></div>
+        <button class="btn-primary" onclick="save(${id||""})">Enregistrer</button>
+    `);
+}
+async function save(id) {
+    const nom = document.getElementById("f-nom").value.trim();
+    if (!nom) return;
+    const body = {nom, marque_id: parseInt(document.getElementById("f-marque_id").value)};
+    const res = id ? await api.put(`/api/modeles/${id}`, body) : await api.post("/api/modeles", body);
+    if (res) { closeModal(); loadData(); }
+}
+async function del(id) {
+    if (!confirm("Supprimer ce modèle ?")) return;
+    if (await api.del(`/api/modeles/${id}`)) loadData();
+}
+loadData();
+</script>
+{% endblock %}

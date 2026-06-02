@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Magasins</h1>
+    <button class="btn-primary" onclick="openForm()">+ Ajouter</button>
+</div>
+<table class="table">
+    <thead><tr><th>ID</th><th>Nom</th><th>Adresse</th><th>Actions</th></tr></thead>
+    <tbody id="table-body"></tbody>
+</table>
+<script>
+async function loadData() {
+    const data = await api.get("/api/magasins");
+    document.getElementById("table-body").innerHTML = data.map(m => `<tr>
+        <td>${m.id}</td><td>${m.nom}</td><td>${m.adresse||""}</td>
+        <td><button class="btn-sm" onclick="openForm(${m.id})">✏️</button> <button class="btn-sm btn-danger" onclick="del(${m.id})">🗑️</button></td>
+    </tr>`).join("");
+}
+async function openForm(id) {
+    let m = {nom: "", adresse: ""};
+    if (id) {
+        const all = await api.get("/api/magasins");
+        const found = all.find(x => x.id === id);
+        if (found) m = {nom: found.nom, adresse: found.adresse || ""};
+    }
+    showModal(id ? "Modifier Magasin" : "Ajouter un Magasin", `
+        <div class="form-group"><label>Nom</label><input type="text" id="f-nom" value="${m.nom}"></div>
+        <div class="form-group"><label>Adresse</label><input type="text" id="f-adresse" value="${m.adresse}"></div>
+        <button class="btn-primary" onclick="save(${id||""})">Enregistrer</button>
+    `);
+}
+async function save(id) {
+    const nom = document.getElementById("f-nom").value.trim();
+    if (!nom) return;
+    const body = {nom, adresse: document.getElementById("f-adresse").value};
+    const res = id ? await api.put(`/api/magasins/${id}`, body) : await api.post("/api/magasins", body);
+    if (res) { closeModal(); loadData(); }
+}
+async function del(id) {
+    if (!confirm("Supprimer ce magasin ?")) return;
+    if (await api.del(`/api/magasins/${id}`)) loadData();
+}
+loadData();
+</script>
+{% endblock %}

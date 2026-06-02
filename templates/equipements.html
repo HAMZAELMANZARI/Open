@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Équipements</h1>
+    <button class="btn-primary" onclick="openForm()">+ Ajouter</button>
+</div>
+<div class="table-filters">
+    <input type="text" id="search-q" placeholder="Rechercher (série, modèle)..." oninput="loadData()">
+    <select id="filter-statut" onchange="loadData()">
+        <option value="">Tous les statuts</option>
+        <option value="DISPONIBLE">Disponible</option>
+        <option value="EN USAGE">En Usage</option>
+        <option value="MAINTENANCE">Maintenance</option>
+        <option value="RETIRE">Retiré</option>
+        <option value="PERDU">Perdu</option>
+    </select>
+</div>
+<table class="table">
+    <thead><tr>
+        <th>ID</th><th>N° Série</th><th>Modèle</th><th>Marque</th>
+        <th>Statut</th><th>Magasin</th><th>Acquisition</th><th>Actions</th>
+    </tr></thead>
+    <tbody id="table-body"></tbody>
+</table>
+<script>
+const _params = new URLSearchParams(window.location.search);
+if (_params.has("q")) document.getElementById("search-q").value = _params.get("q");
+
+async function loadData() {
+    const q = document.getElementById("search-q").value;
+    const statut = document.getElementById("filter-statut").value;
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (statut) params.set("statut", statut);
+    const data = await api.get(`/api/equipements?${params}`);
+    const tbody = document.getElementById("table-body");
+    tbody.innerHTML = data.map(e => `<tr>
+        <td>${e.id}</td>
+        <td>${e.numero_serie || ""}</td>
+        <td>${e.modele_nom || ""}</td>
+        <td>${e.marque_nom || ""}</td>
+        <td><span class="status status-${(e.statut||"").toLowerCase().replace(/\s/g,"")}">● ${e.statut}</span></td>
+        <td>${e.magasin_nom || ""}</td>
+        <td>${e.date_acquisition || ""}</td>
+        <td><button class="btn-sm" onclick="openForm(${e.id})">✏️</button> <button class="btn-sm btn-danger" onclick="del(${e.id})">🗑️</button></td>
+    </tr>`).join("");
+}
+async function openForm(id) {
+    const modeles = await api.get("/api/modeles");
+    const magasins = await api.get("/api/magasins");
+    let e = {numero_serie: "", modele_id: "", statut: "DISPONIBLE", magasin_id: "", date_acquisition: "", dernier_service: ""};
+    if (id) e = await api.get(`/api/equipements/${id}`) || e;
+    const statuses = ["DISPONIBLE","EN USAGE","MAINTENANCE","RETIRE","PERDU"];
+    showModal(id ? "Modifier Équipement" : "Ajouter Équipement", `
+        <div class="form-group"><label>N° Série</label><input type="text" id="f-numero_serie" value="${e.numero_serie||""}"></div>
+        <div class="form-group"><label>Modèle</label><select id="f-modele_id">${modeles.map(m => `<option value="${m.id}" ${m.id==e.modele_id?"selected":""}>${m.marque_nom} ${m.nom}</option>`).join("")}</select></div>
+        <div class="form-group"><label>Statut</label><select id="f-statut">${statuses.map(s => `<option ${s==e.statut?"selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="form-group"><label>Magasin</label><select id="f-magasin_id"><option value="">--</option>${magasins.map(m => `<option value="${m.id}" ${m.id==e.magasin_id?"selected":""}>${m.nom}</option>`).join("")}</select></div>
+        <div class="form-group"><label>Date acquisition</label><input type="date" id="f-date_acquisition" value="${e.date_acquisition||""}"></div>
+        <div class="form-group"><label>Dernier service</label><input type="date" id="f-dernier_service" value="${e.dernier_service||""}"></div>
+        <button class="btn-primary" onclick="save(${id||""})">Enregistrer</button>
+    `);
+}
+async function save(id) {
+    const body = {
+        numero_serie: document.getElementById("f-numero_serie").value,
+        modele_id: parseInt(document.getElementById("f-modele_id").value),
+        statut: document.getElementById("f-statut").value,
+        magasin_id: document.getElementById("f-magasin_id").value || null,
+        date_acquisition: document.getElementById("f-date_acquisition").value || null,
+        dernier_service: document.getElementById("f-dernier_service").value || null,
+    };
+    const res = id ? await api.put(`/api/equipements/${id}`, body) : await api.post("/api/equipements", body);
+    if (res) { closeModal(); loadData(); }
+}
+async function del(id) {
+    if (!confirm("Supprimer cet équipement ?")) return;
+    if (await api.del(`/api/equipements/${id}`)) loadData();
+}
+loadData();
+</script>
+{% endblock %}

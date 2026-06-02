@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Matériel Militaire</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/api.js"></script>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>EQUIP MANAGER</h2>
+            </div>
+            <div class="sidebar-search" id="sidebar-search">
+                <span class="sidebar-search-icon">🔍</span>
+                <input type="text" id="global-search" placeholder="Rechercher équipement..." onkeydown="if(event.key==='Enter' && this.value.trim()) window.location.href='/equipements?q='+encodeURIComponent(this.value.trim())">
+            </div>
+            <nav class="sidebar-nav" id="sidebar-nav">
+                <a href="/dashboard" class="nav-item active" data-page="dashboard">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="/equipements" class="nav-item" data-page="equipements">
+                    <span>📦</span> Équipements
+                </a>
+                <a href="/marques" class="nav-item" data-page="marques">
+                    <span>🏷️</span> Marques
+                </a>
+                <a href="/modeles" class="nav-item" data-page="modeles">
+                    <span>🔧</span> Modèles
+                </a>
+                <a href="/magasins" class="nav-item" data-page="magasins">
+                    <span>🏪</span> Magasins
+                </a>
+                <a href="/missions" class="nav-item" data-page="missions">
+                    <span>🎯</span> Missions
+                </a>
+                <a href="/reservations" class="nav-item" data-page="reservations">
+                    <span>📋</span> Réservations
+                </a>
+                <a href="/inscription" class="nav-item" data-page="inscription" id="nav-users" style="display:none;">
+                    <span>👥</span> Utilisateurs
+                </a>
+            </nav>
+            <div class="nav-item print-btn" onclick="window.print()" style="cursor:pointer;">
+                <span>🖨️</span> Imprimer
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <span id="user-name"></span>
+                    <small id="user-role"></small>
+                </div>
+                <button class="btn-logout" id="btn-logout">Déconnexion</button>
+            </div>
+        </aside>
+        <main class="main-content" id="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 id="modal-title"></h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const token = localStorage.getItem("token");
+            const page = window.location.pathname.slice(1) || "connexion";
+            if (!token && !["connexion", "inscription", ""].includes(page)) {
+                window.location.href = "/connexion";
+                return;
+            }
+            if (["dashboard", "connexion", "inscription"].includes(page)) document.getElementById("sidebar-search").style.display = "none";
+            const params = new URLSearchParams(window.location.search);
+            if (params.has("q")) document.getElementById("global-search").value = params.get("q");
+            if (token) {
+                const user = JSON.parse(localStorage.getItem("user") || "{}");
+                document.getElementById("user-name").textContent = user.nom || "Utilisateur";
+                document.getElementById("user-role").textContent = user.role || "";
+                if (user.role === "Admin") document.getElementById("nav-users").style.display = "flex";
+            }
+            document.querySelectorAll(".nav-item").forEach(el => {
+                if (el.dataset.page === page) el.classList.add("active");
+            });
+            document.getElementById("btn-logout").addEventListener("click", () => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.href = "/connexion";
+            });
+            document.getElementById("modal-close").addEventListener("click", closeModal);
+            document.getElementById("modal-overlay").addEventListener("click", (e) => {
+                if (e.target === e.currentTarget) closeModal();
+            });
+        });
+    </script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

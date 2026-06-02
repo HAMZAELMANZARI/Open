@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Missions</h1>
+    <button class="btn-primary" onclick="openForm()">+ Ajouter</button>
+</div>
+<table class="table">
+    <thead><tr><th>ID</th><th>Nom</th><th>Destination</th><th>Début</th><th>Fin</th><th>Statut</th><th>Actions</th></tr></thead>
+    <tbody id="table-body"></tbody>
+</table>
+<script>
+async function loadData() {
+    const data = await api.get("/api/missions");
+    document.getElementById("table-body").innerHTML = data.map(m => `<tr>
+        <td>${m.id}</td><td>${m.nom}</td><td>${m.destination||""}</td>
+        <td>${m.date_debut||""}</td><td>${m.date_fin||""}</td>
+        <td><span class="status status-${(m.statut||"").toLowerCase()}">● ${m.statut}</span></td>
+        <td><button class="btn-sm" onclick="openForm(${m.id})">✏️</button> <button class="btn-sm btn-danger" onclick="del(${m.id})">🗑️</button></td>
+    </tr>`).join("");
+}
+async function openForm(id) {
+    let m = {nom:"", destination:"", date_debut:"", date_fin:"", statut:"PLANIFICATION"};
+    if (id) m = await api.get(`/api/missions/${id}`) || m;
+    const statuses = ["PLANIFICATION","ACTIVE","TERMINEE"];
+    showModal(id ? "Modifier Mission" : "Ajouter Mission", `
+        <div class="form-group"><label>Nom</label><input type="text" id="f-nom" value="${m.nom}"></div>
+        <div class="form-group"><label>Destination</label><input type="text" id="f-destination" value="${m.destination||""}"></div>
+        <div class="form-group"><label>Début</label><input type="date" id="f-date_debut" value="${m.date_debut||""}"></div>
+        <div class="form-group"><label>Fin</label><input type="date" id="f-date_fin" value="${m.date_fin||""}"></div>
+        <div class="form-group"><label>Statut</label><select id="f-statut">${statuses.map(s => `<option ${s==m.statut?"selected":""}>${s}</option>`).join("")}</select></div>
+        <button class="btn-primary" onclick="save(${id||""})">Enregistrer</button>
+    `);
+}
+async function save(id) {
+    const body = {
+        nom: document.getElementById("f-nom").value,
+        destination: document.getElementById("f-destination").value || null,
+        date_debut: document.getElementById("f-date_debut").value || null,
+        date_fin: document.getElementById("f-date_fin").value || null,
+        statut: document.getElementById("f-statut").value,
+    };
+    const res = id ? await api.put(`/api/missions/${id}`, body) : await api.post("/api/missions", body);
+    if (res) { closeModal(); loadData(); }
+}
+async function del(id) {
+    if (!confirm("Supprimer cette mission ?")) return;
+    if (await api.del(`/api/missions/${id}`)) loadData();
+}
+loadData();
+</script>
+{% endblock %}

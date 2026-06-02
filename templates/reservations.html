@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Réservations</h1>
+    <button class="btn-primary" onclick="openForm()">+ Nouvelle</button>
+</div>
+<table class="table">
+    <thead><tr>
+        <th>ID</th><th>Équipement</th><th>Mission</th><th>Réservation</th><th>Retour</th><th>Statut</th><th>Actions</th>
+    </tr></thead>
+    <tbody id="table-body"></tbody>
+</table>
+<script>
+async function loadData() {
+    const data = await api.get("/api/reservations");
+    document.getElementById("table-body").innerHTML = data.map(r => `<tr>
+        <td>${r.id}</td><td>${r.numero_serie} (${r.modele_nom})</td><td>${r.mission_nom}</td>
+        <td>${r.date_reservation||""}</td><td>${r.date_retour||""}</td>
+        <td><span class="status status-${(r.statut||"").toLowerCase()}">● ${r.statut}</span></td>
+        <td>
+            ${r.statut !== "RETOURNEE" ? `<button class="btn-sm" onclick="openForm(${r.id})">✏️</button>` : ""}
+            <button class="btn-sm btn-danger" onclick="del(${r.id})">🗑️</button>
+        </td>
+    </tr>`).join("");
+}
+async function openForm(id) {
+    const equipements = await api.get("/api/equipements");
+    const missions = await api.get("/api/missions");
+    let r = {equipement_id:"", mission_id:"", date_reservation:"", date_retour:"", statut:"RESERVEE"};
+    if (id) {
+        const all = await api.get("/api/reservations");
+        const found = all.find(x => x.id === id);
+        if (found) r = {...r, equipement_id: found.equipement_id, mission_id: found.mission_id, date_reservation: found.date_reservation, date_retour: found.date_retour, statut: found.statut};
+    }
+    const statuses = ["RESERVEE","SORTIE","RETOURNEE"];
+    showModal(id ? "Modifier Réservation" : "Nouvelle Réservation", `
+        <div class="form-group"><label>Équipement</label><select id="f-equipement_id">${equipements.filter(e=>e.statut==="DISPONIBLE"||e.id==r.equipement_id).map(e => `<option value="${e.id}" ${e.id==r.equipement_id?"selected":""}>${e.numero_serie} - ${e.modele_nom}</option>`).join("")}</select></div>
+        <div class="form-group"><label>Mission</label><select id="f-mission_id">${missions.map(m => `<option value="${m.id}" ${m.id==r.mission_id?"selected":""}>${m.nom}</option>`).join("")}</select></div>
+        <div class="form-group"><label>Date réservation</label><input type="date" id="f-date_reservation" value="${r.date_reservation}"></div>
+        <div class="form-group"><label>Date retour</label><input type="date" id="f-date_retour" value="${r.date_retour||""}"></div>
+        <div class="form-group"><label>Statut</label><select id="f-statut">${statuses.map(s => `<option ${s==r.statut?"selected":""}>${s}</option>`).join("")}</select></div>
+        <button class="btn-primary" onclick="save(${id||""})">Enregistrer</button>
+    `);
+}
+async function save(id) {
+    const body = {
+        equipement_id: parseInt(document.getElementById("f-equipement_id").value),
+        mission_id: parseInt(document.getElementById("f-mission_id").value),
+        date_reservation: document.getElementById("f-date_reservation").value,
+        date_retour: document.getElementById("f-date_retour").value || null,
+        statut: document.getElementById("f-statut").value,
+    };
+    const res = id ? await api.put(`/api/reservations/${id}`, body) : await api.post("/api/reservations", body);
+    if (res) { closeModal(); loadData(); }
+}
+async function del(id) {
+    if (!confirm("Supprimer cette réservation ?")) return;
+    if (await api.del(`/api/reservations/${id}`)) loadData();
+}
+loadData();
+</script>
+{% endblock %}

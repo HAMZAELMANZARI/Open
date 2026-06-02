@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="welcome-bar">
+    <div>
+        <h1>Tableau de Bord</h1>
+        <p class="welcome-sub" id="welcome-sub">Bienvenue, <span id="user-greeting"></span></p>
+    </div>
+    <div class="welcome-date" id="current-date"></div>
+</div>
+
+<div class="cards-grid" id="stats-cards">
+    <div class="stat-card stat-total">
+        <div class="stat-icon">📦</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-total">-</div>
+            <div class="stat-label">Total Équipements</div>
+        </div>
+    </div>
+    <div class="stat-card stat-ok">
+        <div class="stat-icon">✅</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-disponible">-</div>
+            <div class="stat-label">Disponibles</div>
+        </div>
+    </div>
+    <div class="stat-card stat-active">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-en_usage">-</div>
+            <div class="stat-label">En Usage</div>
+        </div>
+    </div>
+    <div class="stat-card stat-warn">
+        <div class="stat-icon">🔧</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-maintenance">-</div>
+            <div class="stat-label">Maintenance</div>
+        </div>
+    </div>
+    <div class="stat-card stat-loss">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-perdu">-</div>
+            <div class="stat-label">Perdus</div>
+        </div>
+    </div>
+    <div class="stat-card stat-mission">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-missions">-</div>
+            <div class="stat-label">Missions Actives</div>
+        </div>
+    </div>
+    <div class="stat-card stat-deployed">
+        <div class="stat-icon">🚁</div>
+        <div class="stat-body">
+            <div class="stat-value" id="stat-sortis">-</div>
+            <div class="stat-label">Équipements Sortis</div>
+        </div>
+    </div>
+</div>
+
+<div class="dash-sections">
+    <div class="dash-section">
+        <div class="dash-section-header">
+            <h2>📦 Derniers Équipements</h2>
+        </div>
+        <div class="dash-section-body" id="recent-equip">
+            <p class="loading">Chargement...</p>
+        </div>
+    </div>
+    <div class="dash-section">
+        <div class="dash-section-header">
+            <h2>📋 Dernières Réservations</h2>
+        </div>
+        <div class="dash-section-body" id="recent-reserv">
+            <p class="loading">Chargement...</p>
+        </div>
+    </div>
+</div>
+
+<div class="quick-actions">
+    <h2>⚡ Actions Rapides</h2>
+    <div class="quick-actions-grid">
+        <a href="/equipements" class="quick-action-btn">➕ Nouvel Équipement</a>
+        <a href="/missions" class="quick-action-btn">🎯 Nouvelle Mission</a>
+        <a href="/reservations" class="quick-action-btn">📋 Nouvelle Réservation</a>
+        <a href="/marques" class="quick-action-btn">🏷️ Nouvelle Marque</a>
+    </div>
+</div>
+
+<script>
+(async () => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    document.getElementById("user-greeting").textContent = user.nom || "Utilisateur";
+    const now = new Date();
+    document.getElementById("current-date").textContent = now.toLocaleDateString("fr-FR", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+
+    const stats = await api.get("/api/dashboard/stats");
+    if (stats) {
+        document.getElementById("stat-total").textContent = stats.total_equipements;
+        document.getElementById("stat-disponible").textContent = stats.disponible;
+        document.getElementById("stat-en_usage").textContent = stats.en_usage;
+        document.getElementById("stat-maintenance").textContent = stats.maintenance;
+        document.getElementById("stat-perdu").textContent = stats.perdu;
+        document.getElementById("stat-missions").textContent = stats.missions_actives;
+        document.getElementById("stat-sortis").textContent = stats.equipements_sortis;
+    }
+
+    const equipements = await api.get("/api/equipements");
+    if (equipements) {
+        const recent = equipements.slice(-5).reverse();
+        const html = `<table class="table"><thead><tr><th>N° Série</th><th>Modèle</th><th>Statut</th></tr></thead><tbody>
+            ${recent.map(e => `<tr><td>${e.numero_serie || "-"}</td><td>${e.modele_nom || "-"}</td><td><span class="status status-${e.statut?.toLowerCase().replace(/\s+/g, "_")}">${e.statut}</span></td></tr>`).join("")}
+        </tbody></table>`;
+        document.getElementById("recent-equip").innerHTML = html;
+    }
+
+    const reservations = await api.get("/api/reservations");
+    if (reservations) {
+        const recent = reservations.slice(-5).reverse();
+        const html = `<table class="table"><thead><tr><th>Mission</th><th>Équipement</th><th>Statut</th></tr></thead><tbody>
+            ${recent.map(r => `<tr><td>${r.mission_nom || "-"}</td><td>${r.numero_serie || r.modele_nom || "-"}</td><td><span class="status status-${r.statut?.toLowerCase()}">${r.statut}</span></td></tr>`).join("")}
+        </tbody></table>`;
+        document.getElementById("recent-reserv").innerHTML = html;
+    }
+})();
+</script>
+{% endblock %}

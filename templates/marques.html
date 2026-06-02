@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Marques</h1>
+    <button class="btn-primary" onclick="openForm()">+ Ajouter</button>
+</div>
+<table class="table">
+    <thead><tr><th>ID</th><th>Nom</th><th>Actions</th></tr></thead>
+    <tbody id="table-body"></tbody>
+</table>
+<script>
+async function loadData() {
+    const data = await api.get("/api/marques");
+    document.getElementById("table-body").innerHTML = data.map(m => `<tr>
+        <td>${m.id}</td><td>${m.nom}</td>
+        <td><button class="btn-sm" onclick="openForm(${m.id})">✏️</button> <button class="btn-sm btn-danger" onclick="del(${m.id})">🗑️</button></td>
+    </tr>`).join("");
+}
+async function openForm(id) {
+    let m = {nom: ""};
+    if (id) m = (await api.get("/api/marques")).find(x => x.id === id) || m;
+    showModal(id ? "Modifier Marque" : "Ajouter une Marque", `
+        <div class="form-group"><label>Nom</label><input type="text" id="f-nom" value="${m.nom}"></div>
+        <button class="btn-primary" onclick="save(${id||""})">Enregistrer</button>
+    `);
+}
+async function save(id) {
+    const nom = document.getElementById("f-nom").value.trim();
+    if (!nom) return;
+    const res = id ? await api.put(`/api/marques/${id}`, {nom}) : await api.post("/api/marques", {nom});
+    if (res) { closeModal(); loadData(); }
+}
+async function del(id) {
+    if (!confirm("Supprimer cette marque ?")) return;
+    if (await api.del(`/api/marques/${id}`)) loadData();
+}
+loadData();
+</script>
+{% endblock %}
