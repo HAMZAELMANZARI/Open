@@ -1,6 +1,6 @@
 # Gestion Matériel 
 
-Flask ≥3.1 + Jinja2 + vanilla JS — gestion d'équipement militaire. Code (messages, BDD, templates) en **français**. Prod via Waitress ≥3.0.
+Flask ≥3.1 + Jinja2 + vanilla JS — gestion d'équipement. Code (messages, BDD, templates) en **français**. Prod via Waitress ≥3.0.
 
 Pas de tests, pas de linter, pas de formateur, pas de CI, pas de `.git`.
 
